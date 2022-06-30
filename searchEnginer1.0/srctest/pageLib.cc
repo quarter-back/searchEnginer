@@ -1,4 +1,5 @@
 #include "pageLib.hh"
+#include "../src/utfcpp-master/source/utf8.h"
 
 using std::cout;
 using std::endl;
@@ -49,10 +50,11 @@ void PageLib::rss(const char *fm, int &count) {
         XMLElement *root_description =
             root_item->FirstChildElement("description");
         str = regex_replace(root_description->GetText(), reg, "");
-        ss << str;
-        ss.ignore(str.size(), '\n');
-        ss >> item.description;
+        item.description = ignore(str);
         insertItem(item, count);
+        if (count == 1416) {
+            cout << "++++" << fm << endl;
+        }
         root_item = root_item->NextSiblingElement("item");
         count++;
     }
@@ -60,13 +62,31 @@ void PageLib::rss(const char *fm, int &count) {
     return;
 }
 
+string PageLib::ignore(string &str) {
+    string ret;
+    for (auto it = str.begin(), it1 = str.begin(); it1 != str.end();) {
+        utf8::next(it1, str.end());
+        stringstream ss;
+        while (it < it1) {
+            ss << *it;
+            it++;
+        }
+        if (ss.str() == "\n") {
+            ss.clear();
+        } else {
+            ret += ss.str();
+        }
+    }
+    return ret;
+}
+
 void PageLib::insertItem(RssItem &item, int num) {
     stringstream ss;
     ss << "<doc>"
        << "<docid>" << num << "</docid>"
+       << "<url>" << item.link << "</url>"
        << "<title>" << item.title << "</title>"
-       << "<link>" << item.link << "</link>"
-       << "<description>" << item.description << "</description>"
+       << "<content>" << item.description << "</content>"
        << "</doc>"
        << "\n";
     _file.push_back(ss.str());

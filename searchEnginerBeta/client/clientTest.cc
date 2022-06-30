@@ -1,26 +1,18 @@
-///
-/// @file    clientTest.cc
-/// @author  lemon(haohb13@gmail.com)
-/// @date    2021-02-03 21:10:10
-///
-
-#include <errno.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-
 #include "../include/json.hpp"
-
+#include <arpa/inet.h>
+#include <errno.h>
 #include <fstream>
 #include <iostream>
+#include <netinet/in.h>
 #include <sstream>
+#include <stdio.h>
+#include <string.h>
 #include <string>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include <vector>
+
 using nlohmann::json;
 using std::cin;
 using std::cout;
@@ -31,7 +23,6 @@ using std::vector;
 void parse(string request) {
     char _request[4096] = {0};
     memcpy(_request, request.c_str(), request.size());
-
     string msgContent;
     int operatorId = 0;
     size_t msgLen = 0;
@@ -61,18 +52,17 @@ void parse(string request) {
     cout << "msgContent:" << msgContent << endl;
 }
 
-void pack(string& line, int op, string& data) {
+void pack(string &line, int op, string &data) {
     int dataSz = line.size();
     char dataSz_c[4] = {0};
     // cout << "dataSz:" << dataSz << endl;
 
-    memcpy(dataSz_c, (char*)&dataSz, 4);
-
+    memcpy(dataSz_c, (char *)&dataSz, 4);
     int opId = op;
     char opId_c[4] = {0};
     // cout << "opId:" << opId << endl;
 
-    memcpy(opId_c, (char*)&opId, 4);
+    memcpy(opId_c, (char *)&opId, 4);
 
     char buf[4096] = {0};
 
@@ -84,17 +74,12 @@ void pack(string& line, int op, string& data) {
     for (int i = 0; i < 4; ++i) {
         buf[idx++] = opId_c[i];
     }
-
     for (int i = 0; i < line.size(); ++i) {
         buf[idx++] = line[i];
     }
-
     for (int i = 0; i < 8 + line.size(); ++i) {
         data.push_back(buf[i]);
     }
-
-    // parse(data);
-
     data.append("\n");
 }
 
@@ -105,7 +90,7 @@ struct WebPage {
     vector<string> description;
 };
 
-void unpack(json& j) {
+void unpack(json &j) {
     vector<WebPage> vecPage;
     for (auto it = j.begin(); it != j.end(); ++it) {
         WebPage webpage;
@@ -120,26 +105,28 @@ void unpack(json& j) {
     }
 
     int idx = 0;
-    char op;
+    char op[10];
     idx = ((idx + 5) > vecPage.size() ? vecPage.size() : (idx + 5));
 
     while (1) {
         for (int i = ((idx - 5 < 0) ? 0 : (idx - 5)); i < idx; ++i) {
-            cout << "No:" << i + 1 << endl;
-            cout << "title: " << vecPage[i].title << endl;
-            cout << "link:  " << vecPage[i].link << endl;
-            cout << "description:   ";
+            cout << "-->No:" << i + 1 << endl;
+            cout << "-->title: " << vecPage[i].title << endl;
+            cout << "-->link:  " << vecPage[i].link << endl;
+            cout << "-->description:   ";
             for (int j = 0; j < vecPage[i].description.size(); ++j) {
                 cout << "..." << vecPage[i].description[j] << "...";
             }
             cout << endl << endl;
         }
         cout << "Page:  " << idx << "/" << vecPage.size() << endl;
-        cout << "n:next page  b:back page q:quit" << endl;
+        cout << "n:for next page  b:for back page q:quit" << endl;
+        //==>
+        cout << "g:for to link    q:for quit" << endl;
         cin >> op;
-        if (op == 'n') {
+        if (op[0] == 'n') {
             idx = ((idx + 5) > vecPage.size() ? vecPage.size() : (idx + 5));
-        } else if (op == 'b') {
+        } else if (op[0] == 'b') {
             if ((idx - 5) < 5) {
                 if (vecPage.size() < 5) {
                     idx = vecPage.size();
@@ -149,15 +136,24 @@ void unpack(json& j) {
             } else {
                 idx -= 5;
             }
-        } else if (op == 'q') {
+        } else if (op[0] == 'q') {
             cin.clear();
             cin.ignore();
             break;
+        } else if (op[0] == 'g') {
+            char number[1024] = {0};
+            strcpy(number, op + 1);
+            int index = atoi(number);
+            cout << "index:" << index << endl;
+            string linkstr("w3m ");
+
+            linkstr += vecPage[index].link;
+            system(linkstr.c_str());
         }
     }
 }
 
-void test0() {
+void work() {
     int clientfd = ::socket(AF_INET, SOCK_STREAM, 0);
     if (clientfd < 0) {
         perror("socket");
@@ -172,13 +168,14 @@ void test0() {
     serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
     socklen_t length = sizeof(serverAddr);
 
-    if (::connect(clientfd, (struct sockaddr*)&serverAddr, length) < 0) {
+    if (::connect(clientfd, (struct sockaddr *)&serverAddr, length) < 0) {
         perror("connect");
         close(clientfd);
         return;
     }
-    printf("conn has connected!...\n");
-
+    system("clear");
+    cout << endl << endl << endl << endl;
+    system("figlet -c seseENGINER");
     string recommanderKey;
     string solitaireKey;
     bool reFlag = false;
@@ -188,9 +185,11 @@ void test0() {
     int opId;
     while (1) {
         if (!reFlag && !soFlag) {
-            cout << ">> pls input selection:\n1.关键字查询 2.网页查询 3.关键字推荐 "
-                "4.关键字接龙 5.退出"
-             << endl;
+            cout << "<seseENGINER>$ pls input selection:" << endl
+                 << "<seseENGINER>$ 1.关键字查询 " << endl
+                 << "<seseENGINER>$ 2.网页查询 " << endl
+                 << "<seseENGINER>$ 3.关键字推荐 " << endl
+                 << "<seseENGINER>$ 5.退出" << endl;
             getline(cin, line);
             opId = std::stoi(line);
             if (opId == 4) {
@@ -199,7 +198,7 @@ void test0() {
         }
         if (opId == 1 || opId == 2) {
             if (!reFlag) {
-                cout << "请输入查询的关键字:" << endl;
+                cout << "请输入查询的关键字=>" << endl;
                 getline(cin, line);
             } else {
                 if (reFlag) {
@@ -215,27 +214,12 @@ void test0() {
             if (ret < 0) {
                 perror("send");
             }
-            /* close(clientfd); */
-
             ret = 0;
             // string str;
             char buff[65536] = {0};
             ret = recv(clientfd, buff, sizeof(buff), 0);
-
-            // cout << buff << endl;
-
-            // printf("buf = %s\n", buf);
-
-            // cout << "buff = " << buff << endl;
-
-            // string str(buff);
-
-            // cout << "str = " << str << endl;
-
             std::istringstream iss;
-
             iss.str(buff);
-
             if (opId == 1) {
                 json j;
                 iss >> j;
@@ -251,9 +235,6 @@ void test0() {
             } else if (opId == 2) {
                 json j;
                 iss >> j;
-
-                // cout << j << endl;
-
                 unpack(j);
             }
         } else if (opId == 5) {
@@ -342,21 +323,17 @@ void test0() {
                     reFlag = true;
                     soFlag = false;
 
-                }else if(line[0] == 'q'){
+                } else if (line[0] == 'q') {
                     reFlag = false;
                     soFlag = false;
                     continue;
-                }else {
+                } else {
                     solitaireKey = keys[std::stoi(line) - 1];
                     opId = 4;
                     soFlag = true;
                 }
             } else {
-                // cout << "请输入关键字:" << endl;
-                // getline(cin, line);
-
                 string data;
-
                 pack(solitaireKey, opId, data);
 
                 int ret = send(clientfd, data.c_str(), data.size(), 0);
@@ -398,29 +375,22 @@ void test0() {
                     reFlag = true;
                     soFlag = false;
 
-                }else if(line[0] == 'q'){
+                } else if (line[0] == 'q') {
                     reFlag = false;
                     soFlag = false;
                     continue;
-                }else {
+                } else {
                     solitaireKey = keys[std::stoi(line) - 1];
                     opId = 4;
                     soFlag = true;
                 }
             }
         }
-
-        // 1. 客户端先发数据
-
-        /* sleep(1); */
-        /* close(clientfd); */
-        /* break; */
     }
-
     close(clientfd);
 }
 
 int main(void) {
-    test0();
+    work();
     return 0;
 }

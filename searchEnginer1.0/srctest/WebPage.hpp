@@ -33,7 +33,6 @@ public:
     void show();//打印测试函数 
     
     void WordsHandle();//处理单词词频 
-    
 
 private:
     string _doc;//整篇文档

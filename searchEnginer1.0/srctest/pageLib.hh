@@ -27,6 +27,12 @@ typedef struct RssItem {
 } RssItem;
 
 //生成网页库，网页偏移库
+//通过dirScanner引用构建PageLib对象pl
+//调用
+//pl.create()
+//pl.offset()
+//pl.store()
+//生成网页库和偏移库
 class PageLib {
   public:
     PageLib(DirScanner &dirScanner);
@@ -38,6 +44,9 @@ class PageLib {
 
     //获取xml文件里的的每个<doc>的内容
     void rss(const char *fm, int &count);
+
+    //文章内容去掉'\n'
+    string ignore(string &str);
 
     //将Rssitem 插入_file;
     void insertItem(RssItem &item, int num);
